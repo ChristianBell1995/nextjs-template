@@ -1,6 +1,8 @@
+import { StarShip, useCreateFleet, useSearchStarShip } from "@/api/example";
 import styles from "@/styles/Home.module.css";
 import { Inter } from "next/font/google";
 import Head from "next/head";
+import { Dispatch, SetStateAction, useState } from "react";
 import styled from "styled-components";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -15,12 +17,170 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className={styles.main}>
-        <StyledHeader>Hi</StyledHeader>
+        <Container />
       </main>
     </>
   );
 }
 
-const StyledHeader = styled.h1`
-  font-size: 2rem;
+const Container = () => {
+  const [search, setSearch] = useState<string | undefined>();
+  const [selectedStartShips, setSelectedStartShips] = useState<StarShip[]>([]);
+  const starShipQuery = useSearchStarShip(search);
+  const starShips = starShipQuery.data?.results as StarShip[];
+
+  const createFleetMutation = useCreateFleet();
+  const createFleet = () => {
+    createFleetMutation.mutate(selectedStartShips, {
+      onSuccess: (data) => {
+        setSelectedStartShips([]);
+        console.log(data);
+      },
+    });
+  };
+  console.log("selectedStartShips", selectedStartShips);
+  return (
+    <>
+      <input
+        type="text"
+        onKeyDown={(e) => {
+          setSearch(e.target.value);
+        }}
+      />
+      {starShipQuery.isLoading && <StyledPara>Loading startships</StyledPara>}
+      {starShipQuery.isError && (
+        <StyledPara>Error Loading startships</StyledPara>
+      )}
+      {starShipQuery.isSuccess && (
+        <ListSearchedStarShips
+          starShips={starShips}
+          setSelectedStartShips={setSelectedStartShips}
+        />
+      )}
+      {selectedStartShips.length && (
+        <>
+          <SelectedStartShips
+            selectedStartShips={selectedStartShips}
+            setSelectedStartShips={setSelectedStartShips}
+          />
+          <SearchedStartShipButton
+            onClick={createFleet}
+            disabled={createFleetMutation.isLoading}
+          >
+            Create Fleet
+          </SearchedStartShipButton>
+        </>
+      )}
+    </>
+  );
+};
+
+interface IListStartShips {
+  starShips: StarShip[];
+  setSelectedStartShips: Dispatch<SetStateAction<StarShip[]>>;
+}
+
+const ListSearchedStarShips = ({
+  starShips,
+  setSelectedStartShips,
+}: IListStartShips) => {
+  return (
+    <>
+      {starShips.map((starShip, index) => (
+        <ListSearchedStarShipContainer key={index}>
+          <StyledPara key={starShip.name}>{starShip.name}</StyledPara>
+          <SearchedStartShipButton
+            onClick={() => {
+              setSelectedStartShips((prev) => [...prev, starShip]);
+            }}
+          >
+            +
+          </SearchedStartShipButton>
+        </ListSearchedStarShipContainer>
+      ))}
+    </>
+  );
+};
+
+const ListSearchedStarShipContainer = styled.div`
+  display: flex;
+`;
+
+const SearchedStartShipButton = styled.button``;
+
+interface ISelectedStartShips {
+  selectedStartShips: StarShip[];
+  setSelectedStartShips: Dispatch<SetStateAction<StarShip[]>>;
+}
+
+const SelectedStartShips = ({
+  selectedStartShips,
+  setSelectedStartShips,
+}: ISelectedStartShips) => {
+  return (
+    <StyledSelectedStartShipContainer>
+      {selectedStartShips.map((starShip, index) => (
+        <SelectedStartShipCard key={index}>
+          <StyledCardContent>
+            <div>
+              <StyledParaSelectedStartShip>
+                {starShip.name}
+              </StyledParaSelectedStartShip>
+              <StyledParaSelectedStartShip>
+                {starShip.model}
+              </StyledParaSelectedStartShip>
+              <StyledParaSelectedStartShip>
+                {starShip.starship_class}
+              </StyledParaSelectedStartShip>
+              <StyledParaSelectedStartShip>
+                {starShip.crew}
+              </StyledParaSelectedStartShip>
+            </div>
+            <SearchedStartShipButton
+              onClick={() => {
+                setSelectedStartShips((prev) => {
+                  return [
+                    ...prev.slice(0, index),
+                    ...prev.slice(index + 1, prev.length),
+                  ];
+                });
+              }}
+            >
+              Remove
+            </SearchedStartShipButton>
+          </StyledCardContent>
+        </SelectedStartShipCard>
+      ))}
+    </StyledSelectedStartShipContainer>
+  );
+};
+
+const SelectedStartShipCard = styled.div`
+  background-color: azure;
+  flex: 1 1 260px;
+  max-width: 260px;
+`;
+
+const StyledPara = styled.p`
+  font-size: 1rem;
+`;
+
+const StyledParaSelectedStartShip = styled.p`
+  font-size: 1rem;
+  color: black;
+`;
+
+const StyledSelectedStartShipContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+`;
+
+const StyledCardContent = styled.div`
+  display: flex;
+  justify-content: space-between;
+  height: 100%;
+  > div {
+    padding: 0.5rem;
+  }
 `;
